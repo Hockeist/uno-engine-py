@@ -220,32 +220,4 @@ class Deck:
     def __repr__(self) -> str:
         return f"Deck(cards={self.size()})"
 
-    def get_card_distribution(self) -> dict:
-        """
-        Get distribution of cards in the deck by type.
-        How many cards in deck.
 
-        Returns:
-            Dictionary with card type counts
-        """
-        distribution = {
-            "total": self.size(),
-            "number_cards": 0,
-            "action_cards": 0,
-            "wild_cards": 0,
-            "by_color": {color.name: 0 for color in CardColor},
-            "by_label": {label.name: 0 for label in CardLabel},
-        }
-
-        for card in self._cards:
-            distribution["by_color"][card.color.name] += 1
-            distribution["by_label"][card.label.name] += 1
-
-            if card.is_number_card:
-                distribution["number_cards"] += 1
-            elif card.is_action_card:
-                distribution["action_cards"] += 1
-            elif card.is_wild:
-                distribution["wild_cards"] += 1
-
-        return distribution

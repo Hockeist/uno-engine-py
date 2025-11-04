@@ -76,7 +76,7 @@ class UnoGameEngine:
             self.deck = Deck()  # Create fresh deck
 
         # Deal initial cards (4 cards per player in standard UNO)
-        self._deal_initial_cards(4)
+        self._deal_initial_cards(7)
 
         # Setup discard pile with first card
         self._setup_discard_pile()

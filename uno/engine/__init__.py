@@ -1,6 +1,7 @@
 from .card import Card, CardColor, CardEffect, CardFactory, CardLabel
 from .deck import Deck
 from .engine import UnoGameEngine
+from .simulator import UnoSimulation
 
 __all__ = [
     "Card",
@@ -10,4 +11,5 @@ __all__ = [
     "CardFactory",
     "Deck",
     "UnoGameEngine",
+    "UnoSimulation",
 ]

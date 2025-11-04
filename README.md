@@ -19,6 +19,10 @@ A comprehensive UNO card game engine with multiple AI bot implementations, desig
 
 ### Installation
 
+#### uv 
+
+[uv](https://docs.astral.sh/uv/) - an extremely fast Python package and project manager.
+
 ```bash
 # Clone the repository
 git clone <your-repo-url>
@@ -31,6 +35,24 @@ uv sync
 uv sync --dev
 ```
 
+#### pip
+
+[pip](https://pip.pypa.io/en/stable/installation/) 
+
+```bash
+python -m venv .venv
+
+# Linux 
+source .venv/bin/activate
+
+# Windwos
+.venv/bin/activate.bat
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+
 ### Running Simulations
 
 ```bash
@@ -38,9 +60,33 @@ uv sync --dev
 uv run main.py
 ```
 
+```
+python3 main.py
+```
+
+or 
+
+```
+# Run default comparison simulation
+python main.py
+
+# Run with custom number of games
+python main.py --games 5000
+
+# Run specific bot configuration
+python main.py --bots RandomBot WildFirstBot --names "Random Player" "Wild Strategy"
+
+# Save results to file
+python main.py --output results.json --format json
+
+# Run in quiet mode for batch processing
+python main.py --quiet --games 10000
+```
+
 ## Usage Examples
 
-### Large-scale Simulation
+
+### Simulation
 ```python
 from uno.simulation.runner import UnoSimulation
 from uno.bots import *
@@ -70,6 +116,10 @@ Random1 (RandomBot):  1188 wins ( 11.88%)
 Random3 (RandomBot):  1135 wins ( 11.35%)
 ```
 
+
+![](images/uno_simulation_results.png)
+
+
 ## Project Structure
 
 ```
@@ -91,7 +141,7 @@ uno-engine-py/
 ```
 
 
-### Creating New Bots
+## Creating New Bots
 
 1. Extend the `Player` base class:
 ```python
@@ -99,11 +149,22 @@ from uno.player.player import Player
 
 class MyCustomBot(Player):
     def choose_action(self) -> PlayerAction:
-        # Implement your strategy here
+        """
+        Choose which action to take
+        Must be implemented by subclasses
+        """
         pass
-    
     def choose_color(self, wild_card: Card) -> CardColor:
-        # Color selection logic
+        """
+        Choose a color when playing a wild card
+        Must be implemented by subclasses
+        """
+        pass
+    def decide_say_uno(self) -> bool:
+        """
+        Decide whether to say UNO when down to one card
+        Must be implemented by subclasses
+        """
         pass
 ```
 

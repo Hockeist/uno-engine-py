@@ -1,221 +1,232 @@
-import time
-from typing import Dict, List
+#!/usr/bin/env python3
+"""
+UNO Simulation CLI Entry Point
 
-import matplotlib.pyplot as plt
+This module provides both a command-line interface and programmatic API
+for running UNO simulations with configurable parameters.
+"""
 
-from uno.bots.random_bot import RandomBot
-from uno.bots.wild_first_bot import WildFirstBot
-from uno.bots.wild_last_bot import WildLastBot
-from uno.engine.engine import UnoGameEngine
+import argparse
+import sys
+import json
+from typing import List, Dict, Any
+from pathlib import Path
+
+from uno.engine import UnoSimulation
+# Imports Bots
+from uno.bots import RandomBot, WildFirstBot, WildLastBot
 
 
-class UnoSimulation:
-    """
-    Runs multiple UNO games and collects statistics.
-    """
-
-    def __init__(self, players: List, num_games: int = 10000):
-        self.players = players
-        self.num_games = num_games
-        self.win_counts = {player.name: 0 for player in players}
-        self.turn_counts = []
-        self.player_types = {player.name: type(player).__name__ for player in players}
-
-    def run_simulation(self) -> Dict:
-        """
-        Run the simulation for the specified number of games.
-        """
-
-        start_time = time.time()
-
-        for game_num in range(1, self.num_games + 1):
-            # Create new game engine for each game
-            game = UnoGameEngine(auto_play=True, turn_delay=0)
-
-            # Add players (create new instances to reset state)
-            for player in self.players:
-                # Create new instance of the same bot type
-                bot_class = type(player)
-                new_player = bot_class(player.name, player.player_id)
-                game.add_player(new_player)
-
-            # Run the game
-            try:
-                winner = game.auto_play_game()
-                if winner:
-                    self.win_counts[winner.name] += 1
-                    self.turn_counts.append(game.turn_count)
-            except Exception as e:
-                continue
-
-        end_time = time.time()
-        self.simulation_time = end_time - start_time
-
-        return self._generate_statistics()
-
-    def _generate_statistics(self) -> Dict:
-        """
-        Generate comprehensive statistics from the simulation.
-        """
-        total_wins = sum(self.win_counts.values())
-
-        stats = {
-            "total_games": self.num_games,
-            "win_counts": self.win_counts,
-            "win_percentages": {
-                name: (count / total_wins * 100)
-                for name, count in self.win_counts.items()
-            },
-            "average_turns": sum(self.turn_counts) / len(self.turn_counts)
-            if self.turn_counts
-            else 0,
-            "simulation_time": self.simulation_time,
-            "games_per_second": self.num_games / self.simulation_time
-            if self.simulation_time > 0
-            else 0,
-            "player_types": self.player_types,
+class UNOCLI:
+    """Command-line interface for UNO simulations"""
+    
+    def __init__(self):
+        self.parser = self._setup_parser()
+    
+    def _setup_parser(self) -> argparse.ArgumentParser:
+        """Configure argument parser"""
+        parser = argparse.ArgumentParser(
+            description="UNO Game Simulation Engine",
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            epilog="""
+Examples:
+  # Run default comparison simulation
+  python main.py
+  
+  # Run with custom number of games
+  python main.py --games 5000
+  
+  # Run specific bot configuration
+  python main.py --bots RandomBot WildFirstBot --names "Random Player" "Wild Strategy"
+  
+  # Save results to file
+  python main.py --output results.json --format json
+  
+  # Run in quiet mode for batch processing
+  python main.py --quiet --games 10000
+            """
+        )
+        
+        # Simulation parameters
+        sim_group = parser.add_argument_group("Simulation Parameters")
+        sim_group.add_argument(
+            "--games", "-g",
+            type=int,
+            default=1000,
+            help="Number of games to simulate (default: 1000)"
+        )
+        sim_group.add_argument(
+            "--bots", "-b",
+            nargs="+",
+            choices=["RandomBot", "WildFirstBot", "WildLastBot"],
+            default=["RandomBot", "WildFirstBot"],
+            help="Bot types to include in simulation"
+        )
+        sim_group.add_argument(
+            "--names", "-n",
+            nargs="+",
+            help="Custom names for bots (must match number of bots)"
+        )
+        sim_group.add_argument(
+            "--seeds", "-s",
+            nargs="+",
+            type=int,
+            help="Random seeds for bots (must match number of bots)"
+        )
+        
+        # Output options
+        output_group = parser.add_argument_group("Output Options")
+        output_group.add_argument(
+            "--output", "-o",
+            type=str,
+            help="Output file path for results"
+        )
+        output_group.add_argument(
+            "--format",
+            choices=["json", "csv"],
+            default="json",
+            help="Output format (default: json)"
+        )
+        output_group.add_argument(
+            "--quiet", "-q",
+            action="store_true",
+            help="Suppress console output"
+        )
+        output_group.add_argument(
+            "--no-plot",
+            action="store_true",
+            help="Disable visualization plots"
+        )
+        
+        return parser
+    
+    def create_bots(self, args: argparse.Namespace) -> List:
+        """Instantiate bot objects based on CLI arguments"""
+        bot_classes = {
+            "RandomBot": RandomBot,
+            "WildFirstBot": WildFirstBot, 
+            "WildLastBot": WildLastBot
         }
-
+        
+        bots = []
+        for i, bot_type in enumerate(args.bots):
+            # Get bot class
+            bot_class = bot_classes[bot_type]
+            
+            # Configure name
+            name = args.names[i] if args.names and i < len(args.names) else f"{bot_type}_{i+1}"
+            
+            # Configure seed
+            seed = args.seeds[i] if args.seeds and i < len(args.seeds) else None
+            
+            # Instantiate bot
+            if bot_class == RandomBot:
+                bot = bot_class(name, seed or i + 1)
+            else:  # WildFirstBot, WildLastBot
+                bot = bot_class(name, seed or i + 1)
+            
+            bots.append(bot)
+        
+        return bots
+    
+    def save_results(self, stats: Dict[str, Any], args: argparse.Namespace) -> None:
+        """Save simulation results to file"""
+        if not args.output:
+            return
+        
+        output_path = Path(args.output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        if args.format == "json":
+            with open(output_path, 'w') as f:
+                json.dump(stats, f, indent=2)
+        elif args.format == "csv":
+            # Implement CSV export if needed
+            pass
+        
+        if not args.quiet:
+            print(f"Results saved to: {output_path}")
+    
+    def run(self, args=None) -> Dict[str, Any]:
+        """Execute UNO simulation with given arguments"""
+        if args is None:
+            args = self.parser.parse_args()
+        
+        # Validate arguments
+        if args.names and len(args.names) != len(args.bots):
+            self.parser.error("Number of names must match number of bots")
+        
+        if args.seeds and len(args.seeds) != len(args.bots):
+            self.parser.error("Number of seeds must match number of bots")
+        
+        # Create bots
+        bots = self.create_bots(args)
+        
+        if not args.quiet:
+            print("Starting UNO Simulation")
+            print(f"Configuration: {len(bots)} bots, {args.games} games")
+            for bot in bots:
+                print(f"  - {bot.name} ({bot.__class__.__name__})")
+            print("-" * 50)
+        
+        # Run simulation
+        simulation = UnoSimulation(bots, num_games=args.games)
+        stats = simulation.run_simulation()
+        
+        # Output results
+        if not args.quiet:
+            simulation.print_statistics(stats)
+            
+            if not args.no_plot:
+                simulation.plot_statistics(stats)
+        
+        # Save results
+        self.save_results(stats, args)
+        
         return stats
 
-    def print_statistics(self, stats: Dict):
-        """
-        Print simulation statistics.
-        """
 
-        # Sort by win percentage
-        sorted_wins = sorted(
-            stats["win_counts"].items(), key=lambda x: x[1], reverse=True
-        )
-
-        for player_name, wins in sorted_wins:
-            percentage = stats["win_percentages"][player_name]
-            player_type = stats["player_types"][player_name]
-            print(
-                f"{player_name} ({player_type}): {wins:>5} wins ({percentage:>6.2f}%)"
-            )
-
-    def plot_statistics(self, stats: Dict):
-        """
-        Create matplotlib plots for the simulation results.
-        """
-        # Create subplots
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
-        fig.suptitle(
-            f"UNO Bot Performance Analysis ({self.num_games:,} Games)",
-            fontsize=16,
-            fontweight="bold",
-        )
-
-        # Prepare data
-        players = list(stats["win_counts"].keys())
-        wins = list(stats["win_counts"].values())
-        percentages = list(stats["win_percentages"].values())
-        player_types = [stats["player_types"][player] for player in players]
-
-        # Colors for different bot types
-        type_colors = {
-            "RandomBot": "lightblue",
-            "WildFirstBot": "lightcoral",
-            "WildLastBot": "lightgreen",
-            "OffensiveBot": "red",
-            "DefensiveBot": "blue",
-        }
-
-        colors = [type_colors.get(ptype, "gray") for ptype in player_types]
-
-        # Plot 1: Win Count Bar Chart
-        bars = ax1.bar(players, wins, color=colors, alpha=0.7, edgecolor="black")
-        ax1.set_title("Total Wins by Bot", fontweight="bold")
-        ax1.set_ylabel("Number of Wins")
-        ax1.tick_params(axis="x", rotation=45)
-
-        # Add value labels on bars
-        for bar in bars:
-            height = bar.get_height()
-            ax1.text(
-                bar.get_x() + bar.get_width() / 2.0,
-                height,
-                f"{int(height)}",
-                ha="center",
-                va="bottom",
-            )
-
-        # Plot 2: Win Percentage Pie Chart
-        ax2.pie(
-            percentages, labels=players, autopct="%1.1f%%", startangle=90, colors=colors
-        )
-        ax2.set_title("Win Percentage Distribution", fontweight="bold")
-
-        # Plot 3: Bot Type Performance
-        type_performance = {}
-        for player, wins in stats["win_counts"].items():
-            ptype = stats["player_types"][player]
-            if ptype not in type_performance:
-                type_performance[ptype] = 0
-            type_performance[ptype] += wins
-
-        type_names = list(type_performance.keys())
-        type_wins = list(type_performance.values())
-        type_colors_plot = [type_colors.get(t, "gray") for t in type_names]
-
-        ax3.bar(
-            type_names, type_wins, color=type_colors_plot, alpha=0.7, edgecolor="black"
-        )
-        ax3.set_title("Performance by Bot Type", fontweight="bold")
-        ax3.set_ylabel("Total Wins")
-        ax3.tick_params(axis="x", rotation=45)
-
-        # Plot 4: Turn Distribution Histogram
-        if self.turn_counts:
-            ax4.hist(
-                self.turn_counts, bins=50, alpha=0.7, edgecolor="black", color="skyblue"
-            )
-            ax4.set_title("Game Length Distribution", fontweight="bold")
-            ax4.set_xlabel("Number of Turns")
-            ax4.set_ylabel("Frequency")
-            ax4.axvline(
-                stats["average_turns"],
-                color="red",
-                linestyle="--",
-                label=f"Average: {stats['average_turns']:.1f} turns",
-            )
-            ax4.legend()
-
-        plt.tight_layout()
-        plt.savefig("uno_simulation_results.png", dpi=300, bbox_inches="tight")
-        plt.show()
-
-
-def run_comparison_simulation():
+def run_default_simulation() -> Dict[str, Any]:
     """
-    Run a comparison simulation with all bot types.
+    Run default comparison simulation.
+    
+    Returns:
+        Dictionary containing simulation statistics
     """
-    # Create bots for comparison
     bots = [
         RandomBot("Random1", 1),
-        RandomBot("Random2", 2),
-        RandomBot("Random3", 3),
-        RandomBot("Random4", 4),
-        WildFirstBot("WildFirst", 5),
-        WildLastBot("WildLast", 6),
-        WildLastBot("WildLast", 7),
+        WildFirstBot("WildFirst", 2),
     ]
-
-    # Run simulation with 10,000 games
-    simulation = UnoSimulation(bots, num_games=10000)
+    
+    simulation = UnoSimulation(bots, num_games=1_000)
     stats = simulation.run_simulation()
-
-    # Print and plot results
+    
     simulation.print_statistics(stats)
     simulation.plot_statistics(stats)
-
+    
     return stats
 
 
 def main():
-    """Main function to run UNO simulations"""
-    stats = run_comparison_simulation()
+    """Main entry point"""
+    cli = UNOCLI()
+    
+    try:
+        # If no arguments provided, run default simulation
+        if len(sys.argv) == 1:
+            print("Running default UNO simulation...")
+            stats = run_default_simulation()
+        else:
+            stats = cli.run()
+        
+        sys.exit(0)
+        
+    except KeyboardInterrupt:
+        print("\nSimulation interrupted by user")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error during simulation: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
