@@ -27,10 +27,6 @@ class RimkaBotSlapper(Player):
         self._current_color = current_color
 
     def choose_action(self) -> PlayerAction:
-        """
-        Returns a valid card or draw action. Favors wild cards first.
-        """
-        # Create a list of valid selections with (index, card) tuples
         valid_selections = []
         for index, card in enumerate(self.hand):
             if card.can_play_on(self._top_card, self._current_color):
@@ -43,22 +39,41 @@ class RimkaBotSlapper(Player):
             ]
 
             if wilds:
-                # Play the first wild card found
                 index, card = wilds[0]
                 new_color = self.choose_color(card) if card.is_wild else None
                 return self.play_card(card, new_color)
             else:
-                # Play a random non-wild card
-                index, card = choice(valid_selections)
-                return self.play_card(card)
+                R=[] #0
+                B=[] #1
+                G=[] #2
+                Y=[] #3
+                for i in self.hand:
+                    if i.color.name=="RED":
+                        R.append(i)
+                    elif i.color.name=="BLUE":
+                        B.append(i)
+                    elif i.color.name=="GREEN":
+                        G.append(i)
+                    elif i.color.name=="YELLOW":
+                        Y.append(i)
+                crds=[[R, len(R)],[B, len(B)],[G, len(G)],[Y, len(Y)]]
+                mx=0
+                maj=[]
+                for i in crds:
+                    if i[1]>mx:
+                        mx=i[1]
+                        maj=i[0]
+                mx=0
+                final_card=Card
+                for i in maj:
+                    if i.label.value>mx:
+                        final_card=i
+                return self.play_card(final_card)
         else:
             # No playable cards, must draw
             return PlayerAction(draw_card=True)
 
     def choose_color(self, wild_card: Card) -> CardColor:
-        """
-        Returns an advantageous color for a wild card.
-        """
         color_counts = {
             color: 0
             for color in [
@@ -78,13 +93,7 @@ class RimkaBotSlapper(Player):
         return max(color_counts, key=color_counts.get)
 
     def decide_say_uno(self) -> bool:
-        """
-        Always says UNO when applicable.
-        """
         return True
 
     def should_play_drawn_card(self, drawn_card: Card) -> bool:
-        """
-        Always plays drawn card if possible.
-        """
         return drawn_card.can_play_on(self._top_card, self._current_color)
