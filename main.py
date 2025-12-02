@@ -196,6 +196,8 @@ def run_default_simulation() -> Dict[str, Any]:
     bots = [
         RandomBot("Random1", 1),
         DragonJump("DragonJump", 2),
+        WildFirstBot("WildFirstBot", 3),
+        WildLastBot("WildLastBot", 4),
     ]
     
     simulation = UnoSimulation(bots, num_games=1_000)
