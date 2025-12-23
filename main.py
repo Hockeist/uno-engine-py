@@ -14,7 +14,7 @@ from pathlib import Path
 
 from uno.engine import UnoSimulation
 # Imports Bots
-from uno.bots import RandomBot, WildFirstBot, WildLastBot
+from uno.bots import RandomBot, WildFirstBot, WildLastBot, RimkaBotSlapper, DragonJump, super_bot
 
 
 class UNOCLI:
@@ -105,7 +105,6 @@ Examples:
         bot_classes = {
             "RandomBot": RandomBot,
             "WildFirstBot": WildFirstBot, 
-            "WildLastBot": WildLastBot
         }
         
         bots = []
@@ -195,7 +194,8 @@ def run_default_simulation() -> Dict[str, Any]:
     """
     bots = [
         RandomBot("Random1", 1),
-        WildFirstBot("WildFirst", 2),
+        WildFirstBot("WildLastBot",3)
+
     ]
     
     simulation = UnoSimulation(bots, num_games=1_000)
