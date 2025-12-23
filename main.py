@@ -14,7 +14,7 @@ from pathlib import Path
 
 from uno.engine import UnoSimulation
 # Imports Bots
-from uno.bots import RandomBot, WildFirstBot, WildLastBot, RimkaBotSlapper, DragonJump
+from uno.bots import RandomBot, WildFirstBot, WildLastBot, RimkaBotSlapper, DragonJump, super_bot
 
 
 class UNOCLI:

@@ -5,4 +5,5 @@ from .Rimka_bot_slapper import RimkaBotSlapper
 from .DJ_bot import DragonJump
 from .well___bot import WellBot
 from .my_bot import MyBot
-__all__ = ["RandomBot", "WildFirstBot", "WildLastBot", "RimkaBotSlapper", "DragonJump", "WellBot", "MyBot"]
+from .super_bot import super_bot
+__all__ = ["RandomBot", "WildFirstBot", "WildLastBot", "RimkaBotSlapper", "DragonJump", "WellBot", "MyBot", "super_bot"]
